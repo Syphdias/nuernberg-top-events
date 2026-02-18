@@ -22,11 +22,13 @@ jobs:
       - name: Generate calendar
         run: |
           uv run nuernberg-top-events --ical
+          mkdir -p deploy
+          cp nuernberg_top_events.ical deploy/
           
       - name: Deploy to GitHub Pages
         if: success()
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: .
+          publish_dir: ./deploy
           keep_files: false
