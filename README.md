@@ -9,9 +9,7 @@ Nürnberg](https://www.nuernberg.de/internet/stadtportal/veranstaltungen_events_
 ## Subscribe to Calendar
 
 Add this URL to your calendar app:
-
-``` https://syphdias.github.io/nuernberg-top-events/nuernberg_top_events.ical
-```
+<https://syphdias.github.io/nuernberg-top-events/nuernberg_top_events.ical>
 
 ### How to Subscribe
 
