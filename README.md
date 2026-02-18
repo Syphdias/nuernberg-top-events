@@ -1,15 +1,20 @@
 # Nürnberg Top Events Calendar
 
-> **Disclaimer:** This project was entirely vibe coded with AI assistance. Use
-> at your own risk!
+> **Disclaimer (and slight rant):**
+> This project was entirely vibe-coded with LLM assistance. Use at your own
+> risk! I do not agree with a lot of the code structure but I do not care enough
+> to "correct" it, as long as it works. I wish this was unnecessary and there
+> was an official way to subscribe to these events — hopefully one day it will
+> be rendered unnecessary. And yes that m-Dash was me, not the LLM, I know how
+> to write, too, sometimes.
+>
+> I will probably monitor this for a few days and then forget about it. I expect
+> this to break somehow if there is a new website layout, paging, a new year, or
+> something else the script does not expect. Please open an issue, if you notice
+> something.
 
 Automatically generates calendar subscription from [top events in
 Nürnberg](https://www.nuernberg.de/internet/stadtportal/veranstaltungen_events_highlights.html).
-
-> **Disclaimer**: I will probably monitor this for a few days and then forget
-> about it. I expect this to break somehow if there is a new website layout,
-> paging, a new year, or something else the script does not expect. Please open
-> an issue, if you notice something.
 
 - Documentation (and FAQ – if any) can found in this README.
 - Feel free to file issues to report bugs, ask questions, or request features.
