@@ -6,6 +6,15 @@
 Automatically generates calendar subscription from [top events in
 Nürnberg](https://www.nuernberg.de/internet/stadtportal/veranstaltungen_events_highlights.html).
 
+> **Disclaimer**: I will probably monitor this for a few days and then forget
+> about it. I expect this to break somehow if there is a new website layout,
+> paging, a new year, or something else the script does not expect. Please open
+> an issue, if you notice something.
+
+- Documentation (and FAQ – if any) can found in this README.
+- Feel free to file issues to report bugs, ask questions, or request features.
+- Feel free to open a pull request.
+
 ## Subscribe to Calendar
 
 Add this URL to your calendar app:
