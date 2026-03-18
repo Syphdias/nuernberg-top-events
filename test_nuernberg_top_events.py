@@ -6,7 +6,6 @@ from nuernberg_top_events import parse_date_string
 
 
 class TestDateParsing(unittest.TestCase):
-
     def test_single_date(self):
         result = parse_date_string("9. August")
         self.assertEqual(result.start, datetime(2026, 8, 9))
@@ -51,6 +50,35 @@ class TestDateParsing(unittest.TestCase):
         result = parse_date_string("Ab 3. August")
         self.assertEqual(result.start, datetime(2026, 8, 3))
         self.assertIsNone(result.end)
+
+
+class TestICalGeneration(unittest.TestCase):
+    def test_dtend_is_exclusive(self):
+        events = [("Test Event", parse_date_string("28. bis 30. August"))]
+        from nuernberg_top_events import generate_ical_from_events
+
+        cal = generate_ical_from_events(events)
+        event = list(cal.walk("VEVENT"))[0]
+        self.assertEqual(event["DTSTART"].dt, datetime(2026, 8, 28).date())
+        self.assertEqual(event["DTEND"].dt, datetime(2026, 8, 31).date())
+
+    def test_dtend_single_date(self):
+        events = [("Test Event", parse_date_string("9. August"))]
+        from nuernberg_top_events import generate_ical_from_events
+
+        cal = generate_ical_from_events(events)
+        event = list(cal.walk("VEVENT"))[0]
+        self.assertEqual(event["DTSTART"].dt, datetime(2026, 8, 9).date())
+        self.assertEqual(event["DTEND"].dt, datetime(2026, 8, 10).date())
+
+    def test_dtend_month_only(self):
+        events = [("Test Event", parse_date_string("August"))]
+        from nuernberg_top_events import generate_ical_from_events
+
+        cal = generate_ical_from_events(events)
+        event = list(cal.walk("VEVENT"))[0]
+        self.assertEqual(event["DTSTART"].dt, datetime(2026, 8, 1).date())
+        self.assertEqual(event["DTEND"].dt, datetime(2026, 9, 1).date())
 
 
 if __name__ == "__main__":

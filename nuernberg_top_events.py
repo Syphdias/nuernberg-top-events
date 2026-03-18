@@ -198,28 +198,43 @@ def main():
             print(format_event(title, event_date))
 
     if args.ical:
-        from icalendar import Calendar, Event
-
-        cal = Calendar()
-        cal.add("prodid", "-//Nürnberg Top Events//nuernberg.de//")
-        cal.add("version", "2.0")
-        cal.add("x-wr-calname", "Nürnberg Top Events")
-        cal.add("x-wr-caldesc", "Top events in Nürnberg")
-
-        for title, event_date in all_events:
-            event = Event()
-            event.add("summary", title)
-            event.add("dtstart", event_date.start.date())
-            if event_date.end:
-                event.add("dtend", event_date.end.date())
-            else:
-                event.add("dtend", event_date.start.date())
-            cal.add_component(event)
-
+        cal = generate_ical_from_events(all_events)
         filename = "nuernberg_top_events.ical"
         with open(filename, "wb") as f:
             f.write(cal.to_ical())
         print(f"Generated {filename} with {len(all_events)} events")
+
+
+def generate_ical_from_events(events: list[tuple[str, EventDate]]):
+    """Generate iCal calendar from events list.
+
+    Args:
+        events: List of tuples containing (title, EventDate)
+
+    Returns:
+        iCal Calendar object
+    """
+    from datetime import timedelta
+
+    from icalendar import Calendar, Event
+
+    cal = Calendar()
+    cal.add("prodid", "-//Nürnberg Top Events//nuernberg.de//")
+    cal.add("version", "2.0")
+    cal.add("x-wr-calname", "Nürnberg Top Events")
+    cal.add("x-wr-caldesc", "Top Events in Nürnberg")
+
+    for title, event_date in events:
+        event = Event()
+        event.add("summary", title)
+        event.add("dtstart", event_date.start.date())
+        if event_date.end:
+            event.add("dtend", (event_date.end + timedelta(days=1)).date())
+        else:
+            event.add("dtend", (event_date.start + timedelta(days=1)).date())
+        cal.add_component(event)
+
+    return cal
 
 
 if __name__ == "__main__":
