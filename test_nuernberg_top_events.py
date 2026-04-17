@@ -59,7 +59,7 @@ class TestDateParsing(unittest.TestCase):
         self.assertIsNone(result[1].end)
 
     def test_future_event_returns_empty_list(self):
-        result = parse_date_string("Erst wieder 2027")
+        result = parse_date_string("Erst wieder")
         self.assertIsInstance(result, list)
         self.assertEqual(len(result), 0)
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import re
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 
 MONTHS = {
     "Januar": 1,
@@ -27,26 +27,39 @@ class EventDate:
     starts_with_ab: bool = False
 
 
-def parse_date_string(date_str: str, year: int = 2026) -> list[EventDate]:
+def parse_date_string(date_str: str, year: int | None = None) -> list[EventDate]:
     """Parse German date string and return list of EventDate objects.
 
+    Args:
+        date_str: German date string (e.g., "9. August", "24. April 2027", "August")
+        year: Year to use if not specified in date string. If None, uses current year.
+
     Returns:
-        List of EventDate objects. "und" with different months returns 2,
-        all other cases return 1 EventDate in a list.
+        List of EventDate objects.
     """
+    from datetime import datetime as dt
+
+    # Use current year if not provided
+    if year is None:
+        year = dt.now().year
+
     date_str = date_str.strip().rstrip(":")
 
-    # Skip future events
-    if "Erst wieder" in date_str:
+    # Skip future events (only skip "Erst wieder" text without dates)
+    if date_str == "Erst wieder" or date_str.startswith("Erst wieder "):
         return []
 
-    # Explicit year in date (e.g., "24. April 2027") - skip if not current year
+    # Explicit year in date (e.g., "24. April 2027" or "Herbst 2027") - use the year from the date
+    explicit_year: int | None = None
     year_match = re.search(r"(\d{4})$", date_str.strip())
     if year_match:
-        event_year = int(year_match.group(1))
-        if event_year != year:
-            return []
+        explicit_year = int(year_match.group(1))
         date_str = re.sub(r"\s+\d{4}$", "", date_str).strip()
+        # If nothing left after extracting year, skip
+        if not date_str:
+            return []
+        # Use extracted year instead of parameter
+        year = explicit_year
 
     # Month only (e.g., "August")
     if date_str in MONTHS:
@@ -137,10 +150,10 @@ def fetch_events_for_year(year: int):
             html = response.read().decode("utf-8")
 
         year_match = re.search(r"Top-Events (\d{4})", html)
-        page_year = int(year_match.group(1)) if year_match else None
-
-        if page_year != year:
-            return []
+        if year_match:
+            page_year = int(year_match.group(1))
+            if page_year != year:
+                return []
 
         heading_spans = re.findall(
             r'class="link--tile__heading"[^>]*>([^<]+?)(?:<br>|:\s*)([^<]+)</span>', html
@@ -161,7 +174,6 @@ def fetch_events_for_year(year: int):
 def main():
     import argparse
     import sys
-    from datetime import datetime as dt
 
     parser = argparse.ArgumentParser(description="Parse Nürnberg events")
     parser.add_argument(
@@ -181,7 +193,7 @@ def main():
     if not args.dry_run and not args.ical:
         args.dry_run = True
 
-    current_year = dt.now().year
+    current_year = datetime.now().year
 
     # Fetch events for current and next year
     all_events = []
@@ -222,8 +234,6 @@ def generate_ical_from_events(events: list[tuple[str, EventDate]]):
     Returns:
         iCal Calendar object
     """
-    from datetime import timedelta
-
     from icalendar import Calendar, Event
 
     cal = Calendar()
