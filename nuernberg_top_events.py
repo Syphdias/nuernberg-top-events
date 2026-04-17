@@ -24,23 +24,37 @@ class EventDate:
     start: datetime
     end: datetime | None = None
     month_name: str | None = None
+    starts_with_ab: bool = False
 
 
-def parse_date_string(date_str: str, year: int = 2026) -> EventDate | None:
-    """Parse German date string and return EventDate object."""
-    date_str = date_str.strip()
+def parse_date_string(date_str: str, year: int = 2026) -> list[EventDate]:
+    """Parse German date string and return list of EventDate objects.
+
+    Returns:
+        List of EventDate objects. "und" with different months returns 2,
+        all other cases return 1 EventDate in a list.
+    """
+    date_str = date_str.strip().rstrip(":")
 
     # Skip future events
     if "Erst wieder" in date_str:
-        return None
+        return []
+
+    # Explicit year in date (e.g., "24. April 2027") - skip if not current year
+    year_match = re.search(r"(\d{4})$", date_str.strip())
+    if year_match:
+        event_year = int(year_match.group(1))
+        if event_year != year:
+            return []
+        date_str = re.sub(r"\s+\d{4}$", "", date_str).strip()
 
     # Month only (e.g., "August")
     if date_str in MONTHS:
         month_num = MONTHS[date_str]
         last_day = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month_num - 1]
-        return EventDate(
-            datetime(year, month_num, 1), datetime(year, month_num, last_day), date_str
-        )
+        return [
+            EventDate(datetime(year, month_num, 1), datetime(year, month_num, last_day), date_str)
+        ]
 
     # Date range (e.g., "4. bis 8. März" or "27. Februar bis 8. März")
     if "bis" in date_str:
@@ -53,10 +67,12 @@ def parse_date_string(date_str: str, year: int = 2026) -> EventDate | None:
                 start_month = (
                     MONTHS.get(start_match.group(2)) if start_match.group(2) else end_month
                 )
-                return EventDate(
-                    datetime(year, start_month, int(start_match.group(1))),
-                    datetime(year, end_month, int(end_match.group(1))),
-                )
+                return [
+                    EventDate(
+                        datetime(year, start_month, int(start_match.group(1))),
+                        datetime(year, end_month, int(end_match.group(1))),
+                    )
+                ]
 
     # Multiple dates (e.g., "15. und 16. Februar" or "26. Juli und 8. August")
     if "und" in date_str:
@@ -67,26 +83,31 @@ def parse_date_string(date_str: str, year: int = 2026) -> EventDate | None:
             month2 = MONTHS.get(second_match.group(2))
             if month2:
                 if first_match.group(2) and first_match.group(2) in MONTHS:
-                    # Different months - return as separate dates (stored in start only)
+                    # Different months - return as two separate dates
                     month1 = MONTHS[first_match.group(2)]
-                    return EventDate(
-                        datetime(year, month1, int(first_match.group(1))),
+                    return [
+                        EventDate(datetime(year, month1, int(first_match.group(1)))),
+                        EventDate(datetime(year, month2, int(second_match.group(1)))),
+                    ]
+                # Same month - return as range
+                return [
+                    EventDate(
+                        datetime(year, month2, int(first_match.group(1))),
                         datetime(year, month2, int(second_match.group(1))),
                     )
-                # Same month - return as range
-                return EventDate(
-                    datetime(year, month2, int(first_match.group(1))),
-                    datetime(year, month2, int(second_match.group(1))),
-                )
+                ]
 
     # Single date (e.g., "9. August" or "Ab 1. Mai")
     match = re.search(r"(\d+)\.\s*(\w+)", date_str)
     if match:
         month = MONTHS.get(match.group(2))
         if month:
-            return EventDate(datetime(year, month, int(match.group(1))))
+            starts_with_ab = date_str.strip().lower().startswith("ab")
+            return [
+                EventDate(datetime(year, month, int(match.group(1))), starts_with_ab=starts_with_ab)
+            ]
 
-    return None
+    return []
 
 
 def format_event(title: str, event_date: EventDate) -> str:
@@ -96,24 +117,14 @@ def format_event(title: str, event_date: EventDate) -> str:
     else:
         title_with_month = title
 
+    date_suffix = " (ab heute)" if event_date.starts_with_ab else ""
+
     if event_date.end:
-        # Check if it's "X. Juli und Y. August" format (different months with small gap)
-        days_diff = (event_date.end - event_date.start).days
-        is_separate_dates = (
-            event_date.start.month != event_date.end.month
-            and days_diff <= 14
-            and event_date.start.day > 20
-        )
-        if is_separate_dates:
-            start_str = event_date.start.strftime("%Y-%m-%d")
-            end_str = event_date.end.strftime("%Y-%m-%d")
-            return f"{title_with_month}: {start_str}, {end_str}"
-        else:
-            start_str = event_date.start.strftime("%Y-%m-%d")
-            end_str = event_date.end.strftime("%Y-%m-%d")
-            return f"{title_with_month}: {start_str} - {end_str}"
+        start_str = event_date.start.strftime("%Y-%m-%d")
+        end_str = event_date.end.strftime("%Y-%m-%d")
+        return f"{title_with_month}: {start_str} - {end_str}{date_suffix}"
     else:
-        return f"{title_with_month}: {event_date.start.strftime('%Y-%m-%d')}"
+        return f"{title_with_month}: {event_date.start.strftime('%Y-%m-%d')}{date_suffix}"
 
 
 def fetch_events_for_year(year: int):
@@ -125,24 +136,21 @@ def fetch_events_for_year(year: int):
         with urllib.request.urlopen(url) as response:
             html = response.read().decode("utf-8")
 
-        # Check if this page is for the requested year
         year_match = re.search(r"Top-Events (\d{4})", html)
         page_year = int(year_match.group(1)) if year_match else None
 
         if page_year != year:
-            return []  # Page doesn't have events for this year
+            return []
 
-        headers = re.findall(r"<h2[^>]*>([^<]+)</h2>", html)
+        heading_spans = re.findall(
+            r'class="link--tile__heading"[^>]*>([^<]+?)(?:<br>|:\s*)([^<]+)</span>', html
+        )
         events = []
 
-        for header in headers:
-            if ":" not in header:
-                continue
+        for date_str, title in heading_spans:
+            event_dates = parse_date_string(date_str.strip(), year)
 
-            date_str, title = header.split(":", 1)
-            event_date = parse_date_string(date_str.strip(), year)
-
-            if event_date:
+            for event_date in event_dates:
                 events.append((title.strip(), event_date))
 
         return events
